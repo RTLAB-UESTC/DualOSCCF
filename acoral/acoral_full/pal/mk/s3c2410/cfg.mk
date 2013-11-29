@@ -1,0 +1,1 @@
+PAL_LINKFLAGS += -Bstatic

@@ -1,0 +1,2213 @@
+diff -u -r acoral_full/.config acoral/.config
+--- acoral_full/.config	2010-09-01 21:01:48.000000000 +0800
++++ acoral/.config	2013-11-28 10:46:20.648891696 +0800
+@@ -10,10 +10,12 @@
+ # CFG_ARM_S3C44B0 is not set
+ # CFG_ARM_LPC2131 is not set
+ # CFG_ARM_LPC2200 is not set
+-# CFG_ARM_PB11MPCORE is not set
+-CFG_ARM_STM3210=y
++CFG_ARM_PB11MPCORE=y
++# CFG_ARM_STM3210 is not set
+ # CFG_X86_EMU_SINGLE is not set
+ # CFG_X86_EMU_CMP is not set
++CFG_CMP=y
++CFG_MAX_CPU=3
+ # CFG_NAND_BOOT is not set
+ 
+ #
+@@ -47,7 +49,6 @@
+ #
+ # Bsp configuration
+ #
+-CFG_BSP=y
+ 
+ #
+ # Plugin configuration
+diff -u -r acoral_full/.config.old acoral/.config.old
+--- acoral_full/.config.old	2010-09-01 21:01:44.000000000 +0800
++++ acoral/.config.old	2012-11-14 15:25:22.000000000 +0800
+@@ -10,10 +10,12 @@
+ # CFG_ARM_S3C44B0 is not set
+ # CFG_ARM_LPC2131 is not set
+ # CFG_ARM_LPC2200 is not set
+-# CFG_ARM_PB11MPCORE is not set
+-CFG_ARM_STM3210=y
++CFG_ARM_PB11MPCORE=y
++# CFG_ARM_STM3210 is not set
+ # CFG_X86_EMU_SINGLE is not set
+ # CFG_X86_EMU_CMP is not set
++CFG_CMP=y
++CFG_MAX_CPU=3
+ # CFG_NAND_BOOT is not set
+ 
+ #
+@@ -47,7 +49,6 @@
+ #
+ # Bsp configuration
+ #
+-CFG_BSP=y
+ 
+ #
+ # Plugin configuration
+diff -u -r acoral_full/include/acoral.h acoral/include/acoral.h
+--- acoral_full/include/acoral.h	2010-08-30 16:06:22.000000000 +0800
++++ acoral/include/acoral.h	2012-10-30 21:30:31.000000000 +0800
+@@ -8,4 +8,7 @@
+ #include "pal.h"
+ #include "lib.h"
+ 
++
++#define UART_DEBUG 1
++
+ #endif
+diff -u -r acoral_full/include/autocfg.h acoral/include/autocfg.h
+--- acoral_full/include/autocfg.h	2010-09-01 21:01:48.000000000 +0800
++++ acoral/include/autocfg.h	2013-11-28 10:46:20.648891696 +0800
+@@ -11,10 +11,12 @@
+ #undef  CFG_ARM_S3C44B0
+ #undef  CFG_ARM_LPC2131
+ #undef  CFG_ARM_LPC2200
+-#undef  CFG_ARM_PB11MPCORE
+-#define CFG_ARM_STM3210 1
++#define CFG_ARM_PB11MPCORE 1
++#undef  CFG_ARM_STM3210
+ #undef  CFG_X86_EMU_SINGLE
+ #undef  CFG_X86_EMU_CMP
++#define CFG_CMP 1
++#define CFG_MAX_CPU (3)
+ #undef  CFG_NAND_BOOT
+ 
+ /*
+@@ -48,7 +50,6 @@
+ /*
+  * Bsp configuration
+  */
+-#define CFG_BSP 1
+ 
+ /*
+  * Plugin configuration
+diff -u -r acoral_full/kernel/include/cmp.h acoral/kernel/include/cmp.h
+--- acoral_full/kernel/include/cmp.h	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/include/cmp.h	2012-10-30 21:30:31.000000000 +0800
+@@ -2,6 +2,8 @@
+ #define ACORAL_CMP_H
+ #include "type.h"
+ void acoral_cmp_init(void);
++
++
+ void acoral_prepare_cpus(void);
+ void acoral_start_cpus(void);
+ #endif
+diff -u -r acoral_full/kernel/include/cpu.h acoral/kernel/include/cpu.h
+--- acoral_full/kernel/include/cpu.h	2010-08-31 14:57:27.000000000 +0800
++++ acoral/kernel/include/cpu.h	2012-11-14 15:19:38.000000000 +0800
+@@ -4,11 +4,11 @@
+ #include "type.h"
+ #include "hal_port.h"
+ #ifndef CFG_CMP
+-#define CFG_MAX_CPU 1
+-#define acoral_current_cpu 0
+-#define acoral_idlest_cpu 0
++#define CFG_MAX_CPU 4        //@@ 1
++#define acoral_current_cpu 1  //@@0
++#define acoral_idlest_cpu 1
+ #else
+-#define acoral_current_cpu HAL_GET_CURRENT_CPU()
++#define acoral_current_cpu 	(HAL_GET_CURRENT_CPU()-1)
+ #define acoral_idlest_cpu acoral_get_idlest_cpu()
+ #endif
+ acoral_u32 acoral_get_idle_maskcpu(acoral_u32 cpu_mask);
+diff -u -r acoral_full/kernel/include/ipi.h acoral/kernel/include/ipi.h
+--- acoral_full/kernel/include/ipi.h	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/include/ipi.h	2012-10-30 21:04:48.000000000 +0800
+@@ -24,6 +24,9 @@
+ }acoral_ipi_cmd_t;
+ 
+ void acoral_ipi_init(void);
++
++//void acoral_link_init(void); //##@@##
++
+ void acoral_ipi_cmd_init(void);
+ void acoral_ipi_cmd_send(acoral_u32 cpu,acoral_u32 cmd,acoral_id thread_id,void *args);
+ void acoral_ipi_cmd_entry(acoral_vector vector);
+diff -u -r acoral_full/kernel/include/timer.h acoral/kernel/include/timer.h
+--- acoral_full/kernel/include/timer.h	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/include/timer.h	2012-10-30 21:33:12.000000000 +0800
+@@ -22,6 +22,10 @@
+ 
+ void acoral_time_init(void);
+ void acoral_ticks_init(void);
++#define HAL_ACORAL_LINK_IPI 3
++void acoral_link_init();//##@@##
++void acoral_link_ipi_entry(void);
++
+ void acoral_ticks_entry(acoral_vector vector);
+ acoral_time acoral_get_ticks(void);
+ void acoral_set_ticks(acoral_time time);
+diff -u -r acoral_full/kernel/src/cmp.c acoral/kernel/src/cmp.c
+--- acoral_full/kernel/src/cmp.c	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/src/cmp.c	2012-11-16 11:30:29.000000000 +0800
+@@ -19,19 +19,31 @@
+ 	acoral_ipi_init();
+ }
+ 
++
++
+ void acoral_prepare_cpus(){
+ 	HAL_PREPARE_CPUS();
+ }
+ 
+ void acoral_start_cpus(){
+-  	int i;
+-	for(i=0;i<HAL_MAX_CPU;i++)
++  	//int i;
++	//for(i=0;i<HAL_MAX_CPU;i++)
++	/*
++	for(i=2;i<=HAL_MAX_CPU;i++) //cpu 2,3
+ 	    if(!HAL_CPU_IS_ACTIVE(i))
+-	      	HAL_START_CPU(i); 	
++	      	HAL_START_CPU(i);
++	 */
++	 HAL_START_CPU(2); 
++	//HAL_START_CPU(1); 
+ }
+ 
+ void idle_follow(void *args){
+-	HAL_CMP_ACK();
++	uart_putstr("idle\r\n");
++	if(acoral_current_cpu == 2)
++	{
++		HAL_CMP_ACK();
++	}
++	*(volatile acoral_u32 *)0x08000004=0x11;
+ 	while(1){
+ #ifdef CFG_DEBUG
+ 	  	acoral_printdbg("In cpu:%d idle\n",acoral_current_cpu);
+@@ -45,6 +57,7 @@
+ void acoral_follow_cpu_start(){
+ 	acoral_comm_policy_data_t data;
+ 	acoral_id idle_id;
++	uart_putstr("follow\r\n");
+   	acoral_printdbg("In follow\n");
+ 	HAL_FOLLOW_CPU_INIT();
+ 	data.cpu=acoral_current_cpu;
+diff -u -r acoral_full/kernel/src/core.c acoral/kernel/src/core.c
+--- acoral_full/kernel/src/core.c	2010-08-31 19:11:07.000000000 +0800
++++ acoral/kernel/src/core.c	2012-11-20 10:53:38.000000000 +0800
+@@ -65,6 +65,7 @@
+ #define DAEM_STACK_SIZE 256
+ #endif
+ void init(void *args){
++	uart_putstr("init\r\n");
+ 	acoral_comm_policy_data_t data;
+ #ifdef CFG_TICKS_ENABLE
+ 	acoral_ticks_init();
+@@ -103,16 +104,24 @@
+ }
+ 
+ acoral_thread_t orig_thread;
++
+ /*================================
+  * Entry c function of start.S 
+  *       c语言初始化入口函数
+  *================================*/
+ void acoral_start(){
++	//hal_mem_init();
++	#ifdef	UART_DEBUG
++	uart_putstr("acoral_start \r\n");
++	#endif
++	//while(1);
++	
+ #ifdef CFG_CMP
+       	static int core_cpu=1;
+ 	if(!core_cpu){
+ 		acoral_set_orig_thread(&orig_thread);
+ 		/*其他次cpu core的开始函数,不会返回的*/
++		uart_putstr("other\r\n");
+ 		acoral_follow_cpu_start();
+ 	}
+ 	core_cpu=0;
+@@ -121,11 +130,17 @@
+ 	orig_thread.console_id=ACORAL_DEV_ERR_ID;
+ 	acoral_set_orig_thread(&orig_thread);
+ 	/*板子初始化*/
++	
+ 	HAL_BOARD_INIT();
+-
++	#ifdef	UART_DEBUG
++	uart_putstr("out of HAL_BOARD_INIT() \r\n");
++	#endif
++	//while(1);
++	
+ 	/*内核模块初始化*/
+ 	acoral_module_init();
+-
++	uart_putstr("out of acoral_module_init \r\n");
++	//while(1);
+ 	/*串口终端应该初始化好了，将根线程的终端id设置为串口终端*/
+ 	orig_thread.console_id=acoral_dev_open("console");;
+ #ifdef CFG_CMP
+@@ -133,6 +148,9 @@
+     	acoral_cmp_init();
+ #endif
+ 
++	//##@@##
++	uart_putstr("link\r\n");
++	acoral_link_init();  //defined in timer.c
+ 	/*主cpu开始函数*/
+ 	acoral_core_cpu_start();
+ }
+@@ -162,6 +180,9 @@
+ }
+ 
+ void acoral_start_os(){
++	
++	uart_print("os%dn", acoral_current_cpu);
++	
+ 	acoral_sched_init();
+ 	acoral_select_thread();
+ 	acoral_set_running_thread(acoral_ready_thread);
+@@ -173,8 +194,19 @@
+  *     内核各模块初始化
+  *================================*/
+ void acoral_module_init(){
++
++	#ifdef	UART_DEBUG
++	uart_putstr("enter  acoral_module_init() \r\n");
++	#endif
++
++
++	
+ 	/*中断系统初始化*/
++	/*interrupt set*/
+ 	acoral_intr_sys_init();
++	
++	uart_putstr("out of acoral_intr_sys_init() \r\n");
++	//while(1);
+ 	/*内存管理系统初始化*/
+ 	acoral_mem_sys_init();
+ 	/*资源管理系统初始化*/
+diff -u -r acoral_full/kernel/src/int.c acoral/kernel/src/int.c
+--- acoral_full/kernel/src/int.c	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/src/int.c	2012-09-24 16:11:37.000000000 +0800
+@@ -13,29 +13,50 @@
+ void acoral_intr_sys_init(){
+ 	acoral_u32 i;
+ 	acoral_vector index;
+-      
+-        /*关中断*/
++
++	 //	UART_DEBUG
++	uart_putstr("enter acoral_intr_sys_init() \r\n");
++	//#endif
++	
++       /*\u5173\u4e2d\u65ad*/
+ 	acoral_intr_disable();
+ 
++	//#ifdef	UART_DEBUG
++	uart_putstr("out of acoral_intr_disable() \r\n");
++	//#endif
++	//while(1);
++	
++	HAL_BOARD_INIT();
++	
+         /*中断嵌套标志初始化*/
+         HAL_INTR_NESTING_INIT();
+ 
+         /*中断底层初始化函数*/
+ 	HAL_INTR_INIT();
+-
++	uart_putstr("out of HAL_INTR_INIT() \r\n");
++	//while(1);
++	
+         /*设置中断公共服务函数*/
+ 	HAL_INTR_SET_ENTRY(acoral_intr_entry);
++	uart_putstr("out of HAL_INTR_SET_ENTRY() \r\n");
++	//while(1);
+ 
+         /*对于每个中断，设置默认的服务处理程序，然后屏蔽该中断*/
+ 	for(i=HAL_INTR_MIN;i<=HAL_INTR_MAX;i++){
+ 		HAL_TRANSLATE_VECTOR(i,index);
+ 		intr_table[index].isr=acoral_default_isr;
+ 		intr_table[index].type=ACORAL_COMM_INTR;
+-		acoral_intr_mask(i);
++		//acoral_intr_mask(i);
+ 	}
+-
++	uart_putstr("init intr_table \r\n");
++	//while(1);
++	
++	//##@@##
+         /*特殊中断初始化*/
+ 	HAL_INTR_SPECIAL();
++	
++	//uart_putstr("out of HAL_INTR_SPECIAL() \r\n");
++	//while(1);
+ }
+ 
+ 
+diff -u -r acoral_full/kernel/src/ipi.c acoral/kernel/src/ipi.c
+--- acoral_full/kernel/src/ipi.c	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/src/ipi.c	2012-11-15 15:15:27.000000000 +0800
+@@ -22,6 +22,9 @@
+   	acoral_ipi_cmd_init();
+ }
+ 
++
++
++
+ /*===========================
+  *    inter-core command initialize 
+  *    核间命令初始化
+@@ -49,7 +52,7 @@
+ 	cmd_data->thread_id=thread_id;
+ 	cmd_data->data=data;
+ 	/*发送核间中断*/
+-	HAL_IPI_SEND(cpu,HAL_CMD_IPI);
++	HAL_IPI_SEND(cpu+1,HAL_CMD_IPI);
+ }
+ 
+ 
+@@ -95,6 +98,7 @@
+ 	}
+ }
+ 
++
+ /*===========================
+  *    get given command's data in the cpu core
+  *    获取核间命令对应的核上的数据结构
+diff -u -r acoral_full/kernel/src/thread.c acoral/kernel/src/thread.c
+--- acoral_full/kernel/src/thread.c	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/src/thread.c	2012-12-04 11:05:25.000000000 +0800
+@@ -132,6 +132,7 @@
+ 	cpu=thread->cpu;
+         /*resumed	*/
+ 	if(cpu!=acoral_current_cpu){
++		//uart_putstr("CFG_CMP resume\r\n");
+ 	  	acoral_ipi_cmd_send(cpu,ACORAL_IPI_THREAD_RESUME,thread->res.id,NULL);
+ 		return;
+ 	}
+@@ -400,7 +401,10 @@
+ 	if(thread->cpu_mask==-1)
+ 		thread->cpu_mask=0xefffffff;
+ 	if(thread->cpu<0)
++	{
++		uart_putstr("cpu<0\r\n");
+ 	      thread->cpu=acoral_get_idle_maskcpu(thread->cpu_mask);
++	}
+ 	if(thread->cpu>=HAL_MAX_CPU)
+ 		thread->cpu=HAL_MAX_CPU-1;
+ 	thread->data=NULL;
+diff -u -r acoral_full/kernel/src/timer.c acoral/kernel/src/timer.c
+--- acoral_full/kernel/src/timer.c	2010-08-30 16:06:22.000000000 +0800
++++ acoral/kernel/src/timer.c	2013-10-24 20:46:36.765934039 +0800
+@@ -14,6 +14,8 @@
+ #include <comm_thrd.h>
+ #include <timer.h>
+ 
++
++
+ acoral_queue_t time_delay_queue;
+ /*----------------*/
+ /*  延时处理队列timeout*/
+@@ -50,6 +52,65 @@
+ 	return;
+ }
+ 
++acoral_spinlock_t acoral_link_lock;
++//acoral_spinlock_t acoral_link_com_lock;
++
++//##@@##
++void acoral_link_init()
++{
++	acoral_spin_init(&acoral_link_lock);
++	//acoral_spin_init(&acoral_link_com_lock);
++	acoral_intr_attach(HAL_ACORAL_LINK_IPI, acoral_link_ipi_entry); //##@@##
++}
++typedef struct App_Mem_Info
++{
++	unsigned char *addr;
++	void*   para;
++    	void*   ret;
++	int	com_index;  //which com
++	int     tag;
++    	int 	  prio;
++}App_Mem_Info;
++
++#define MEMINFO_ADDR 	0x80000400
++#define BITMAP_ADDR	0x80000000
++
++//##@@##
++void acoral_link_ipi_entry(void)
++{
++	App_Mem_Info *memInfo;//, appMemInfo;
++	acoral_u32 *bitmap;
++	acoral_u32 index = 0;
++	
++	memInfo = (App_Mem_Info *)(MEMINFO_ADDR);
++	acoral_print("enter_app\n");
++	acoral_spin_lock(&acoral_link_lock);
++	bitmap = (acoral_u32 *)(BITMAP_ADDR);
++	
++	while(1)
++	{
++		if((index = acoral_find_next_set_bit(bitmap, 32, index)) >= 32)//sizeof(acoral_u32) * 8
++		{
++			acoral_print("cannot find free bit\n");
++			return;
++		}
++		if(!memInfo[index].tag)
++		{
++			memInfo[index].tag = 1;
++			break;
++		}
++		else
++			index++;
++	}
++	
++	acoral_create_thread(memInfo[index].addr, 512,  &memInfo[index],"app",21, acoral_idlest_cpu);
++	
++	acoral_spin_unlock(&acoral_link_lock);
++	
++}
++
++
++
+ void acoral_ticks_entry(acoral_vector vector){
+ #ifdef CFG_HOOK_TICKS
+ 	acoral_ticks_hook();
+diff -u -r acoral_full/lib/include/bitops.h acoral/lib/include/bitops.h
+--- acoral_full/lib/include/bitops.h	2010-08-30 16:06:26.000000000 +0800
++++ acoral/lib/include/bitops.h	2012-11-30 17:18:56.000000000 +0800
+@@ -4,4 +4,7 @@
+ acoral_u32 acoral_find_first_bit(const acoral_u32 *b,acoral_u32 length);
+ void acoral_set_bit(acoral_32 nr,acoral_u32 *p);
+ void acoral_clear_bit(acoral_32 nr,acoral_u32 *p);
++acoral_u32 acoral_find_next_zero_bit(acoral_u32 *bitmap, acoral_u32 size, acoral_u32 offset);
++acoral_u32 acoral_find_next_set_bit(acoral_u32 *bitmap, acoral_u32 size, acoral_u32 offset);
++
+ #endif
+diff -u -r acoral_full/lib/src/bitops.c acoral/lib/src/bitops.c
+--- acoral_full/lib/src/bitops.c	2010-08-30 16:06:26.000000000 +0800
++++ acoral/lib/src/bitops.c	2012-11-30 17:18:55.000000000 +0800
+@@ -24,6 +24,53 @@
+ 	return acoral_ffs(v) + off * 32;
+ }
+ 
++/*find offset next zero bit*/
++/*modify by lg*/
++ acoral_u32 acoral_find_next_zero_bit(acoral_u32 *bitmap, acoral_u32 size, acoral_u32 offset)
++{
++	acoral_u32 *p;
++	acoral_u32 mask;
++
++	while (offset < size)
++	{
++		p = ((acoral_u32 *)bitmap) + (offset >> (sizeof(acoral_u32) + 1));
++		mask = 1UL << (offset & (sizeof(acoral_u32) * 8 - 1));
++
++		if ((~(*p) & mask))
++		{
++			break;
++		}
++
++		++offset;
++	}
++
++	return offset;
++}
++
++
++/*find set bit*/
++acoral_u32 acoral_find_next_set_bit(acoral_u32 *bitmap, acoral_u32 size, acoral_u32 offset)
++{
++	acoral_u32 *p;
++	acoral_u32 mask;
++
++	while (offset < size)
++	{
++		p = ((acoral_u32 *)bitmap) + (offset >> (sizeof(acoral_u32) + 1));
++		mask = 1UL << (offset & (sizeof(acoral_u32) * 8 - 1));
++
++		if (((*p) & mask))
++		{
++			break;
++		}
++
++		++offset;
++	}
++
++	return offset;
++}
++
++
+ void acoral_set_bit(acoral_32 nr,acoral_u32 *bitmap)
+ {
+ 	acoral_u32 oldval, mask = 1UL << (nr & 31);
+diff -u -r acoral_full/lib/src/print.c acoral/lib/src/print.c
+--- acoral_full/lib/src/print.c	2010-08-30 16:06:26.000000000 +0800
++++ acoral/lib/src/print.c	2012-10-22 10:48:50.000000000 +0800
+@@ -385,3 +385,37 @@
+ 	acoral_dev_write(acoral_cur_thread->console_id,&c,1,0,0);
+ 	return c;
+ }
++
++
++
++
++void uart_putstr(acoral_char *str)
++{
++	acoral_32 printed_len;
++	printed_len=acoral_str_len(str); 
++	console_write(str, printed_len, 0, 0);
++}
++
++void uart_print(const acoral_char *fmt, ...)
++{
++	va_list args;
++	acoral_32 printed_len;
++	static acoral_char print_buf[256];
++	va_start(args, fmt);
++	printed_len =vsnprintf(print_buf, sizeof(print_buf), fmt, args);
++	va_end(args);
++	console_write(print_buf,printed_len,0,0);
++}
++
++void uart_printMem(acoral_u32  print_start, acoral_u32 print_size)
++{
++	acoral_u32 i;
++	acoral_u32 printPtr = print_start;
++	for(i = 0; i < print_size; i++, printPtr++)
++	{
++		if((i % 16) == 0)
++			uart_putstr("\r\n");
++		uart_print("%02x ",*(volatile acoral_u8 *)printPtr);
++	}
++		
++}
+diff -u -r acoral_full/Makefile acoral/Makefile
+--- acoral_full/Makefile	2010-09-01 20:46:14.000000000 +0800
++++ acoral/Makefile	2013-11-28 10:52:35.156892676 +0800
+@@ -38,7 +38,7 @@
+ # Include the make variables (CC, etc...)
+ #
+ 
+-CROSS_COMPILE   =/usr/local/arm/arm-2010q1/bin/arm-none-eabi-
++CROSS_COMPILE   =/home/lovelife/software/PB11_ARM/cross_tool/g++_arm_none_eabi/bin/arm-none-eabi-
+ #CROSS_COMPILE  =
+ 
+ AS              = $(CROSS_COMPILE)as
+diff -u -r acoral_full/pal/board/pb11mpcore/include/hal_brd_cfg.h acoral/pal/board/pb11mpcore/include/hal_brd_cfg.h
+--- acoral_full/pal/board/pb11mpcore/include/hal_brd_cfg.h	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/include/hal_brd_cfg.h	2012-10-23 21:05:59.000000000 +0800
+@@ -36,7 +36,9 @@
+ #define    BRD_PROCID2      0x88
+ 
+ /* System controller definitions*/
+-#define    SC_BASE          0x10001000
++//#define    SC_BASE          0x10001000
++#define    SC_BASE          0x1001A000
++
+ #define    SC_CTRL          0x00
+ #define    SC_REMAP_STAT    0x200
+ #define    SC_REMAP         0x100
+@@ -60,6 +62,8 @@
+ 
+ /* General UART definitions*/
+ #define    UART0_BASE       0x10009000  
++//#define    UART0_BASE       0x1000A000  
++
+ 
+ #define UART_PL01x_DR                   0x00	 /*  Data read or written from the interface. */
+ #define UART_PL01x_RSR                  0x04	 /*  Receive status register (Read). */
+@@ -174,8 +178,16 @@
+ #define   DMC_PLL                  0x3000
+ 
+ /*time_register*/
+-#define TIMER0_1_BASE   0x10011000
++//#define TIMER0_1_BASE   (0x10011000 )    //timer0 addr
++#define TIMER0_1_BASE   (0x10012000)        // timer2 addr
++//#define TIMER0_1_BASE   0x10018000		//timer4
++
++//#define TIMER0_1_BASE   0x10019000       //timer6
++
++
+ #define TIMER2_3_BASE   0x10012000
++
++
+ #define TIMER_LOAD              0x00
+ #define TIMER_VALUE             0x04
+ #define TIMER_CONTROL           0x08
+@@ -184,6 +196,18 @@
+ #define TIMER_MIS               0x14
+ #define TIMER_BGLOAD            0x18
+ 
++//##@@
++/*
++#define TIMER_LOAD              0x20
++#define TIMER_VALUE             0x24
++#define TIMER_CONTROL           0x28
++#define TIMER_INTCLR            0x2C
++#define TIMER_RIS               0x30
++#define TIMER_MIS               0x34
++#define TIMER_BGLOAD            0x38
++*/
++
++
+ #define TIMER_ENABLED           0x80
+ #define TIMER_INT_ENABLED       0x20
+ #define TIMER_32BIT_OPERATION   0x02    /* Thirty two bit counter mode*/
+diff -u -r acoral_full/pal/board/pb11mpcore/include/hal_brd_reg.h acoral/pal/board/pb11mpcore/include/hal_brd_reg.h
+--- acoral_full/pal/board/pb11mpcore/include/hal_brd_reg.h	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/include/hal_brd_reg.h	2012-10-22 21:07:46.000000000 +0800
+@@ -4,6 +4,9 @@
+ #define  rSCCTRL  (*(volatile acoral_u32 *)(SC_BASE+SC_CTRL))
+ #define  rTCNT0 (*(volatile acoral_u32 *)(TIMER0_1_BASE+TIMER_CONTROL))
+ #define  rTLD0 (*(volatile acoral_u32 *)(TIMER0_1_BASE+TIMER_LOAD))
++//#define  rTCNT0 (*(volatile acoral_u32 *)(TIMER2_3_BASE+TIMER_CONTROL))
++//#define  rTLD0 (*(volatile acoral_u32 *)(TIMER2_3_BASE+TIMER_LOAD))
++
+ #define  rSCUCTRL  (*(volatile acoral_u32 *)(SCU_BASE+SCU_CTRL))
+ #define  rSYSFLGSET  (*(volatile acoral_u32 *)(BRD_BASE+SYS_FLAGSSET))
+ #endif
+diff -u -r acoral_full/pal/board/pb11mpcore/include/hal_cmp.h acoral/pal/board/pb11mpcore/include/hal_cmp.h
+--- acoral_full/pal/board/pb11mpcore/include/hal_cmp.h	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/include/hal_cmp.h	2012-11-20 10:13:45.000000000 +0800
+@@ -2,6 +2,8 @@
+ #define HAL_CMP_H
+ #define HAL_SCHED_IPI 1
+ #define HAL_CMD_IPI 2
++//#define HAL_ACORAL_LINK_IPI 		3 //##@@##
++
+ #define HAL_CPU_IS_ACTIVE(cpu) hal_cpu_is_active(cpu)
+ 
+ #define HAL_PREPARE_CPUS() hal_prepare_cpus()
+diff -u -r acoral_full/pal/board/pb11mpcore/include/hal_int.h acoral/pal/board/pb11mpcore/include/hal_int.h
+--- acoral_full/pal/board/pb11mpcore/include/hal_int.h	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/include/hal_int.h	2012-10-23 10:39:07.000000000 +0800
+@@ -7,6 +7,8 @@
+ 
+ 
+ /*ARM11MPCore 测试芯片中断源(主GIC，共32个)(编号32－63)*/
++#define IRQ_PRIVATE_TIMER		29
++
+ 
+ #define IRQ_TC11MP_AACI		(IRQ_TC11MP_GIC_START + 0)
+ #define IRQ_TC11MP_TIMER0_1	(IRQ_TC11MP_GIC_START + 1)
+@@ -54,6 +56,8 @@
+ #define IRQ_PB11MP_GPIO1	(IRQ_PB11MP_GIC_START + 7)	/* GPIO 1 */
+ #define IRQ_PB11MP_GPIO2	(IRQ_PB11MP_GIC_START + 8)	/* GPIO 2 */
+ 								/* 9 reserved */
++#define IRQ_PB11MP_TIMER4_5  (IRQ_PB11MP_GIC_START + 9)     //timer4_5
++
+ #define IRQ_PB11MP_RTC_GIC1	(IRQ_PB11MP_GIC_START + 10)	/* Real Time Clock */
+ #define IRQ_PB11MP_SSP		(IRQ_PB11MP_GIC_START + 11)	/* Synchronous Serial Port */
+ #define IRQ_PB11MP_UART0_GIC1	(IRQ_PB11MP_GIC_START + 12)	/* UART 0 on development chip */
+diff -u -r acoral_full/pal/board/pb11mpcore/include/hal_mem.h acoral/pal/board/pb11mpcore/include/hal_mem.h
+--- acoral_full/pal/board/pb11mpcore/include/hal_mem.h	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/include/hal_mem.h	2012-09-12 16:06:04.000000000 +0800
+@@ -14,4 +14,6 @@
+ #define HAL_HEAP_END heap_end
+ #define HAL_MEM_INIT()
+ void hal_scu_enable(void);
++void hal_mem_init(void);
++
+ #endif /* HAL_MEM_H_ */
+diff -u -r acoral_full/pal/board/pb11mpcore/include/hal_timer.h acoral/pal/board/pb11mpcore/include/hal_timer.h
+--- acoral_full/pal/board/pb11mpcore/include/hal_timer.h	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/include/hal_timer.h	2012-10-23 21:06:00.000000000 +0800
+@@ -1,7 +1,13 @@
+ #ifndef HAL_TIMER_H
+ #define HAL_TIMER_H
+ #include"hal_int.h"
+-#define HAL_TICKS_INTR IRQ_TC11MP_TIMER0_1
++//#define HAL_TICKS_INTR IRQ_TC11MP_TIMER0_1
++#define HAL_TICKS_INTR IRQ_TC11MP_TIMER2_3
++//#define HAL_TICKS_INTR IRQ_PB11MP_TIMER4_5
++//#define HAL_TICKS_INTR IRQ_PB11MP_RTC_GIC1
++//#define HAL_TICKS_INTR IRQ_PRIVATE_TIMER
++
++
+ #define HAL_TICKS_INIT() hal_ticks_init()
+ #define HAL_TICKS_DELAY() hal_ticks_delay()
+ void hal_ticks_init();
+diff -u -r acoral_full/pal/board/pb11mpcore/src/hal_board.c acoral/pal/board/pb11mpcore/src/hal_board.c
+--- acoral_full/pal/board/pb11mpcore/src/hal_board.c	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/src/hal_board.c	2012-11-15 10:45:57.000000000 +0800
+@@ -3,7 +3,7 @@
+  	hal_cpu_init();
+ }
+ void hal_cpu_init(){
+-	EnableDCache();
+-	EnableICache();
++	//MMU_EnableDCache();
++	//MMU_EnableICache();
+ 	hal_scu_enable();
+ }
+diff -u -r acoral_full/pal/board/pb11mpcore/src/hal_cmp_c.c acoral/pal/board/pb11mpcore/src/hal_cmp_c.c
+--- acoral_full/pal/board/pb11mpcore/src/hal_cmp_c.c	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/src/hal_cmp_c.c	2012-11-15 10:37:05.000000000 +0800
+@@ -39,8 +39,9 @@
+ void HAL_FOLLOW_CPU_START();
+ void hal_prepare_cpus(){
+ 	acoral_u32 i;
+-	InvalidateIDCache();
+-	HAL_REG(BRD_BASE,SYS_FLAGSSET)=HAL_FOLLOW_CPU_START;
++	//InvalidateIDCache();
++	//HAL_REG(BRD_BASE,SYS_FLAGSSET)=HAL_FOLLOW_CPU_START;
++	HAL_REG(0x08000000,0x0)=HAL_FOLLOW_CPU_START;
+ 	HAL_MB();	
+ 	for(i=1;i<HAL_MAX_CPU;i++)
+ 		irq_stack[i-1]=&stacks[i-1].abt[0];	
+diff -u -r acoral_full/pal/board/pb11mpcore/src/hal_int_c.c acoral/pal/board/pb11mpcore/src/hal_int_c.c
+--- acoral_full/pal/board/pb11mpcore/src/hal_int_c.c	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/src/hal_int_c.c	2012-11-15 14:37:40.000000000 +0800
+@@ -223,6 +223,11 @@
+ 	acoral_u32 i;
+         acoral_u32 pldctrl;
+ 
++	//#ifdef	UART_DEBUG
++	uart_putstr("enter hal_intr_init() \r\n");
++	//#endif
++	//while(1);
++	
+ 	/*设置非DCC模式,此模式将次GIC外部中断关联到内部42号中断*/
+ 	HAL_REG(REALVIEW_SYS_LOCK,0)=0x0000a05f;
+ 	pldctrl = HAL_REG(REALVIEW_SYS_BASE, REALVIEW_PB11MP_SYS_PLD_CTRL1);
+@@ -230,6 +235,9 @@
+ 	HAL_REG(REALVIEW_SYS_BASE , REALVIEW_PB11MP_SYS_PLD_CTRL1)=pldctrl;
+ 	HAL_REG(REALVIEW_SYS_LOCK,0)=0;
+ 
++	uart_putstr("set new mode \r\n");
++	//while(1);
++	
+ 	/*初始化测试芯片GIC, primary */
+ 	gic_dist_init(0,REALVIEW_TC11MP_GIC_DIST_BASE,29);
+ 	gic_cpu_init(0,REALVIEW_TC11MP_GIC_CPU_BASE);
+@@ -270,36 +278,36 @@
+         gic_data[gic_nr].dist_base=base;
+         gic_data[gic_nr].irq_offset=(irq_start-1) &~31;
+ 
+-        /*设置中断分发控制寄存器值为0，不发送中断到CPU接口*/
++	/*
+         HAL_REG(base,GIC_DIST_CTRL)=0;
+ 
+ 	max_irq = HAL_REG(base , GIC_DIST_CTR)&0x1f;
+ 	max_irq = (max_irq + 1) * 32;
+ 
+-	/*修正最大值*/
+ 	if (max_irq > 1020)
+ 		max_irq = 1020;
+ 
+-        /*设置所有外部中断的触发模式*/
+         for (i = 32; i < max_irq; i += 16)
+ 		HAL_REG(base , GIC_DIST_CONFIG + i * 4 / 16)=0;
+ 
+-        /*设置所有外部中断的目标CPU*/
+ 	for (i = 32; i < max_irq; i += 4)
+ 		HAL_REG(base , GIC_DIST_TARGET + i * 4 / 4)=cpumask;
+ 
+ 	
+-	 /*设置所有中断优先级*/
+ 	for (i = 0; i < max_irq; i += 4)
+ 		HAL_REG(base , GIC_DIST_PRI + i * 4 / 4)=0xa0a0a0a0;
+ 
+-	/*屏蔽所有中断*/
+ 	for (i = 0; i < max_irq; i += 32)
+ 		HAL_REG(base ,GIC_DIST_ENABLE_CLEAR + i * 4 / 32)=0xffffffff;
+ 
+-        /*设置中断分发控制寄存器值为1，允许发送中断到CPU接口*/
+ 	HAL_REG(base , GIC_DIST_CTRL)=1;
+-
++	*/
++	
++	HAL_REG(base , GIC_DIST_TARGET + 32)=0x01020101;
++	HAL_REG(base , GIC_DIST_TARGET + 36)=0x01010201;
++	HAL_REG(base , GIC_DIST_TARGET + 72)=0x01020202;
++	uart_putstr("set timer2 to cpu3 \r\n");
++	//while(1);
+ }
+ 
+ 
+diff -u -r acoral_full/pal/board/pb11mpcore/src/hal_ipi.c acoral/pal/board/pb11mpcore/src/hal_ipi.c
+--- acoral_full/pal/board/pb11mpcore/src/hal_ipi.c	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/src/hal_ipi.c	2012-11-15 11:11:05.000000000 +0800
+@@ -1,5 +1,6 @@
+ #include "acoral.h"
+ void hal_ipi_send(acoral_u32 cpu,acoral_vector vector){
++	*(volatile acoral_u32 *)0x1f001f00=0x00000000;
+ 	*(volatile acoral_u32 *)0x1f001f00=1<<(cpu+16)|vector;
+ }
+ 
+diff -u -r acoral_full/pal/board/pb11mpcore/src/hal_mem_c.c acoral/pal/board/pb11mpcore/src/hal_mem_c.c
+--- acoral_full/pal/board/pb11mpcore/src/hal_mem_c.c	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/src/hal_mem_c.c	2012-10-25 15:52:20.000000000 +0800
+@@ -1,4 +1,232 @@
+ #include"acoral.h"
++
++#include<type.h>
++#include"hal_brd_cfg.h"
++
++
++
++#define _MMUTT_STARTADDRESS     0x80000000
++
++#define DESC_SEC                        (0x2|(1<<4))
++#define CB                                      (3<<2)  //cache_on, write_back
++#define CNB                                     (2<<2)  //cache_on, write_through
++#define NCB                                     (1<<2)  //cache_off,WR_BUF on
++#define NCNB                            (0<<2)  //cache_off,WR_BUF off
++#define AP_RW                           (3<<10) //supervisor=RW, user=RW
++#define AP_RO                           (2<<10) //supervisor=RW, user=RO
++
++#define DOMAIN_FAULT            (0x0)
++#define DOMAIN_CHK                      (0x1)
++#define DOMAIN_NOTCHK           (0x3)
++#define DOMAIN0                         (0x0<<5)
++#define DOMAIN1                         (0x1<<5)
++
++#define DOMAIN0_ATTR            (DOMAIN_CHK<<0)
++#define DOMAIN1_ATTR            (DOMAIN_FAULT<<2)
++
++#define RW_CB                           (AP_RW|DOMAIN0|CB|DESC_SEC)
++#define RW_CNB                          (AP_RW|DOMAIN0|CNB|DESC_SEC)
++#define RW_NCNB                         (AP_RW|DOMAIN0|NCNB|DESC_SEC)
++#define RW_FAULT                        (AP_RW|DOMAIN1|NCNB|DESC_SEC)
++
++
++void mmu_setttbase(register acoral_u32 i)
++{
++        asm ("mcr       p15, 0, %0, c2, c0, 0": :"r" (i));
++}
++
++void mmu_set_domain(register acoral_u32 i)
++{
++        asm ("mcr       p15, 0, %0, c3, c0, 0": :"r" (i));
++}
++
++void mmu_enable()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i |= 0x1;
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_disable()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i &= ~0x1;
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_enable_icache()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i |= (1 << 12);
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_enable_dcache()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i |= (1 << 2);
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_disable_icache()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i &= ~(1 << 12);
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_disable_dcache()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i &= ~(1 << 2);
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_enable_alignfault()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i |= (1 << 1);
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_disable_alignfault()
++{
++        register acoral_u32 i;
++
++        /* read control register */
++        asm ("mrc       p15, 0, %0, c1, c0, 0":"=r" (i));
++
++        i &= ~(1 << 1);
++
++        /* write back to control register */
++        asm ("mcr       p15, 0, %0, c1, c0, 0": :"r" (i));
++}
++
++void mmu_clean_invalidated_cache_index(int index)
++{
++        asm ("mcr       p15, 0, %0, c7, c14, 2": :"r" (index));
++}
++
++void mmu_invalidate_tlb()
++{
++        asm ("mcr       p15, 0, %0, c8, c7, 0": :"r" (0));
++}
++
++void mmu_invalidate_dcache()
++{
++        asm ("mcr       p15, 0, %0, c7, c14, 0": :"r" (0));
++}
++
++void mmu_invalidate_icache()
++{
++        asm ("mcr       p15, 0, %0, c7, c5, 0": :"r" (0));
++}
++
++void mmu_setmtt(acoral_u32 vaddrStart, acoral_u32 vaddrEnd, acoral_u32 paddrStart, acoral_u32 attr)
++{
++    volatile acoral_u32 *pTT;
++    volatile int i, nSec;
++
++    pTT = (acoral_u32 *)_MMUTT_STARTADDRESS + (vaddrStart>>20);
++    nSec = (vaddrEnd>>20) - (vaddrStart>>20);
++    for (i=0; i<=nSec; i++)
++    {
++                *pTT = attr |(((paddrStart>>20)+i)<<20);
++                pTT++;
++    }
++}
++
++void mmu_init(void)
++{
++        int i;
++
++        mmu_disable_dcache();
++        mmu_disable_icache();
++        mmu_invalidate_dcache();
++        mmu_invalidate_icache();
++
++        // icache may be turned on here.
++        mmu_enable_icache();
++
++        mmu_disable();
++        mmu_invalidate_tlb();
++
++        // clear all page tables
++        for (i=0; i<(4*1024); i++)
++        {
++                *(volatile unsigned int *)(_MMUTT_STARTADDRESS + i*4) = 0;
++        }
++        mmu_setmtt(0x00000000, 0xFFFFFFFF, 0x00000000,RW_CB);         // bank0
++       // mmu_setmtt(0x0c000000, 0x10000000, 0x0c000000, RW_CNB);         // stepping-stone
++        //mmu_setmtt(0x70000000, 0x80000000, 0x70000000, RW_NCNB);        // SFR
++
++	//mmu_setmtt(0x00000000, 0x00100000, 0x01000000,RW_CB);
++	//mmu_setmtt(0x06000000,0xFFFFFFFF,0x06000000,RW_CB);
++
++        mmu_setttbase(_MMUTT_STARTADDRESS);
++
++        // DOMAIN1: no_access, DOMAIN0,2~15=client(AP is checked)
++        mmu_set_domain(0x55555550|DOMAIN1_ATTR|DOMAIN0_ATTR);
++
++        mmu_enable_alignfault();
++
++        mmu_enable();
++
++        // ICache enable
++       // mmu_enable_icache();
++        // DCache should be turned on after mmu is turned on.
++       // mmu_enable_dcache();
++}
++
++
++void hal_mem_init(){
++       mmu_init();
++       //MMU_init();
++}
++
++
+ void hal_scu_enable(void)
+ {
+ 	acoral_u32 scu_ctrl;
+@@ -9,3 +237,5 @@
+ 		rSCUCTRL=scu_ctrl;
+ 	}
+ }
++
++
+diff -u -r acoral_full/pal/board/pb11mpcore/src/hal_timer.c acoral/pal/board/pb11mpcore/src/hal_timer.c
+--- acoral_full/pal/board/pb11mpcore/src/hal_timer.c	2010-08-30 22:14:02.000000000 +0800
++++ acoral/pal/board/pb11mpcore/src/hal_timer.c	2012-10-23 21:05:59.000000000 +0800
+@@ -4,13 +4,16 @@
+ /**********相关数据*********************/
+ /*****************************************/
+ static void hal_ticks_clear(acoral_vector vector){
+-	*(volatile acoral_u32 *)0x1001100c=0;
++	//*(volatile acoral_u32 *)0x1001100c=0;
++	HAL_REG(TIMER0_1_BASE,TIMER_INTCLR) = 0;
+ }
+ 
+ void hal_ticks_init(){
+ 	acoral_u32 tmp=rSCCTRL;
+ 	acoral_u32 control = TIMER_INT_ENABLED | TIMER_ENABLED | TIMER_32BIT_OPERATION|TIMER_MODE_PERIODIC;
+-	rSCCTRL=tmp|1<<15;
++	//rSCCTRL=tmp|1<<15;
++	//##@@
++	rSCCTRL=tmp|1<<19;
+ 	rTCNT0=0;
+ 	rTLD0=1000000/ACORAL_TICKS_PER_SEC;
+ 	rTCNT0=control;
+@@ -19,4 +22,5 @@
+ 
+ acoral_u32 hal_ticks_delay(){
+ 	return 1000000/ACORAL_TICKS_PER_SEC-HAL_REG(TIMER0_1_BASE,TIMER_VALUE);	
++	//return 1000000/ACORAL_TICKS_PER_SEC-HAL_REG(TIMER2_3_BASE,TIMER_VALUE);
+ }
+diff -u -r acoral_full/pal/include/hal_comm.h acoral/pal/include/hal_comm.h
+--- acoral_full/pal/include/hal_comm.h	2010-08-30 16:06:26.000000000 +0800
++++ acoral/pal/include/hal_comm.h	2012-07-19 16:05:46.000000000 +0800
+@@ -3,7 +3,7 @@
+ #include<type.h>
+ typedef acoral_u32 acoral_sr;
+ #include<hal_port.h>
+-#define HAL_MAX_CPU CFG_MAX_CPU
++#define HAL_MAX_CPU   CFG_MAX_CPU
+ #define HAL_REG(base,offset) (*(volatile acoral_u32 *)((base) + (offset)))
+ 
+ /****************************                                                                                                                 
+diff -u -r acoral_full/pal/mk/pb11mpcore/acoral.lds acoral/pal/mk/pb11mpcore/acoral.lds
+--- acoral_full/pal/mk/pb11mpcore/acoral.lds	2010-08-30 16:06:27.000000000 +0800
++++ acoral/pal/mk/pb11mpcore/acoral.lds	2012-10-23 21:10:42.000000000 +0800
+@@ -46,7 +46,7 @@
+ 	Undef_stack_size =  0x100;        
+ 	Abort_stack_size =  0x100;     
+ 	IRQ_stack_size   =  0x400;       
+-	FIQ_stack_size   =  0x100;   
++	FIQ_stack_size   =  0x100;
+ 
+ 	FIQ_stack        =  stack_base; 
+ 	IRQ_stack        =  FIQ_stack   - FIQ_stack_size;  
+diff -u -r acoral_full/pal/mk/pb11mpcore/hal_mem_s.s acoral/pal/mk/pb11mpcore/hal_mem_s.s
+--- acoral_full/pal/mk/pb11mpcore/hal_mem_s.s	2010-08-30 16:06:27.000000000 +0800
++++ acoral/pal/mk/pb11mpcore/hal_mem_s.s	2012-09-12 15:58:18.000000000 +0800
+@@ -7,78 +7,78 @@
+ .equ 	R1_M    ,	1
+ .equ 	BUS_M, 	3<<30
+ 
+-   .global EnableICache
+-EnableICache:
++   .global MMU_EnableICache
++MMU_EnableICache:
+    mrc p15,0,r0,c1,c0,0
+    orr r0,r0,#R1_I
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void DisableICache(void)
++@void MMU_DisableICache(void)
+ @**************************************************************
+-   .global DisableICache
+-DisableICache:
++   .global MMU_DisableICache
++MMU_DisableICache:
+    mrc p15,0,r0,c1,c0,0
+    bic r0,r0,#R1_I
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void EnableDCache(void)
++@void MMU_EnableDCache(void)
+ @**************************************************************
+-   .global EnableDCache
+-EnableDCache:
++   .global MMU_EnableDCache
++MMU_EnableDCache:
+    mrc p15,0,r0,c1,c0,0
+    orr r0,r0,#R1_C
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void DisableDCache(void)
++@void MMU_DisableDCache(void)
+ @**************************************************************
+-   .global DisableDCache
+-DisableDCache:
++   .global MMU_DisableDCache
++MMU_DisableDCache:
+    mrc p15,0,r0,c1,c0,0
+    bic r0,r0,#R1_C
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void EnableAlignFault(void)
++@void MMU_EnableAlignFault(void)
+ @**************************************************************
+-   .global EnableAlignFault
+-EnableAlignFault:
++   .global MMU_EnableAlignFault
++MMU_EnableAlignFault:
+    mrc p15,0,r0,c1,c0,0
+    orr r0,r0,#R1_A
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void DisableAlignFault(void)
++@void MMU_DisableAlignFault(void)
+ @**************************************************************
+-   .global DisableAlignFault
+-DisableAlignFault:
++   .global MMU_DisableAlignFault
++MMU_DisableAlignFault:
+    mrc p15,0,r0,c1,c0,0
+    bic r0,r0,#R1_A
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void EnableMMU(void)
++@void MMU_EnableMMU(void)
+ @**************************************************************
+-   .global EnableMMU
+-EnableMMU:
++   .global MMU_EnableMMU
++MMU_EnableMMU:
+    mrc p15,0,r0,c1,c0,0
+    orr r0,r0,#R1_M
+    mcr p15,0,r0,c1,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void DisableMMU(void)
++@void MMU_DisableMMU(void)
+ @**************************************************************
+-   .global DisableMMU
+-DisableMMU:
++   .global MMU_DisableMMU
++MMU_DisableMMU:
+    mrc p15,0,r0,c1,c0,0
+    bic r0,r0,#R1_M
+    mcr p15,0,r0,c1,c0,0
+@@ -87,160 +87,160 @@
+ @**************************************************************
+ @ Set TTBase
+ @ ro=TTBase
+-@void SetTTBase(int base)
++@void MMU_SetTTBase(int base)
+ @**************************************************************
+-   .global SetTTBase
+-SetTTBase:
++   .global MMU_SetTTBase
++MMU_SetTTBase:
+    mcr p15,0,r0,c2,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+ @ Set Domain
+-@void SetDomain(int domain)
++@void MMU_SetDomain(int domain)
+ @ro=domain
+ @**************************************************************
+-   .global SetDomain
+-SetDomain:
++   .global MMU_SetDomain
++MMU_SetDomain:
+    mcr p15,0,r0,c3,c0,0
+    mov pc ,lr
+ 
+ @**************************************************************
+ @ ICache/DCache functions
+-@void InvalidateIDCache(void)
++@void MMU_InvalidateIDCache(void)
+ @**************************************************************
+-   .global InvalidateIDCache
+-InvalidateIDCache:
++   .global MMU_InvalidateIDCache
++MMU_InvalidateIDCache:
+    mcr p15,0,r0,c7,c7,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateICache(void)
++@void MMU_InvalidateICache(void)
+ @**************************************************************
+-   .global InvalidateICache
+-InvalidateICache:
++   .global MMU_InvalidateICache
++MMU_InvalidateICache:
+    mcr p15,0,r0,c7,c5,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateICacheMVA(U32 mva)
++@void MMU_InvalidateICacheMVA(U32 mva)
+ @r0=mva
+ @**************************************************************
+-   .global InvalidateICacheMVA
+-InvalidateICacheMVA:
++   .global MMU_InvalidateICacheMVA
++MMU_InvalidateICacheMVA:
+    mcr p15,0,r0,c7,c5,1
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void PrefetchICacheMVA(U32 mva)
++@void MMU_PrefetchICacheMVA(U32 mva)
+ @r0=mva
+ @**************************************************************
+-   .global PrefetchICacheMVA
+-PrefetchICacheMVA:
++   .global MMU_PrefetchICacheMVA
++MMU_PrefetchICacheMVA:
+    mcr p15,0,r0,c7,c13,1
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateDCache(void)
++@void MMU_InvalidateDCache(void)
+ @**************************************************************
+-   .global InvalidateDCache
+-InvalidateDCache:
++   .global MMU_InvalidateDCache
++MMU_InvalidateDCache:
+    mcr p15,0,r0,c7,c6,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateDCacheMVA(U32 mva)
++@void MMU_InvalidateDCacheMVA(U32 mva)
+ @**************************************************************
+-   .global InvalidateDCacheMVA
+-InvalidateDCacheMVA:
++   .global MMU_InvalidateDCacheMVA
++MMU_InvalidateDCacheMVA:
+    @r0=mva
+    mcr p15,0,r0,c7,c6,1
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void CleanDCacheMVA(U32 mva)
++@void MMU_CleanDCacheMVA(U32 mva)
+ @**************************************************************
+-   .global CleanDCacheMVA
+-CleanDCacheMVA:
++   .global MMU_CleanDCacheMVA
++MMU_CleanDCacheMVA:
+    @r0=mva
+    mcr p15,0,r0,c7,c10,1
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void CleanInvalidateDCacheMVA(U32 mva)
++@void MMU_CleanInvalidateDCacheMVA(U32 mva)
+ @r0=mva
+ @**************************************************************
+-   .global CleanInvalidateDCacheMVA
+-CleanInvalidateDCacheMVA:
++   .global MMU_CleanInvalidateDCacheMVA
++MMU_CleanInvalidateDCacheMVA:
+    mcr p15,0,r0,c7,c14,1
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void CleanDCacheIndex(U32 index)
++@void MMU_CleanDCacheIndex(U32 index)
+ @r0=index
+ @**************************************************************
+-   .global CleanDCacheIndex
+-CleanDCacheIndex:
++   .global MMU_CleanDCacheIndex
++MMU_CleanDCacheIndex:
+    mcr p15,0,r0,c7,c10,2
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void CleanInvalidateDCacheIndex(U32 index)
++@void MMU_CleanInvalidateDCacheIndex(U32 index)
+ @r0=index
+ @**************************************************************
+-   .global CleanInvalidateDCacheIndex
+-CleanInvalidateDCacheIndex:
++   .global MMU_CleanInvalidateDCacheIndex
++MMU_CleanInvalidateDCacheIndex:
+    mcr p15,0,r0,c7,c14,2
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void WaitForInterrupt(void)
++@void MMU_WaitForInterrupt(void)
+ @**************************************************************
+-   .global WaitForInterrupt
+-WaitForInterrupt:
++   .global MMU_WaitForInterrupt
++MMU_WaitForInterrupt:
+    mcr p15,0,r0,c7,c0,4
+    mov pc ,lr
+ 
+ @**************************************************************
+ @ TLB functions
+-@voic InvalidateTLB(void)
++@voic MMU_InvalidateTLB(void)
+ @**************************************************************
+-   .global InvalidateTLB
+-InvalidateTLB:
++   .global MMU_InvalidateTLB
++MMU_InvalidateTLB:
+    mcr p15,0,r0,c8,c7,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateITLB(void)
++@void MMU_InvalidateITLB(void)
+ @**************************************************************
+-   .global InvalidateITLB
+-InvalidateITLB:
++   .global MMU_InvalidateITLB
++MMU_InvalidateITLB:
+    mcr p15,0,r0,c8,c5,0
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateITLBMVA(U32 mva)
++@void MMU_InvalidateITLBMVA(U32 mva)
+ @ro=mva
+ @**************************************************************
+-   .global InvalidateITLBMVA
+-InvalidateITLBMVA:
++   .global MMU_InvalidateITLBMVA
++MMU_InvalidateITLBMVA:
+    mcr p15,0,r0,c8,c5,1
+    mov pc ,lr
+ 
+ @**************************************************************
+-@void InvalidateDTLB(void)
++@void MMU_InvalidateDTLB(void)
+ @**************************************************************
+-	.global InvalidateDTLB
+-InvalidateDTLB:
++	.global MMU_InvalidateDTLB
++MMU_InvalidateDTLB:
+ 	mcr p15,0,r0,c8,c6,0
+ 	mov pc ,lr
+ 
+ @**************************************************************
+ @ Process ID
+-@void SetProcessId(U32 pid)
++@void MMU_SetProcessId(U32 pid)
+ @r0= pid
+ @**************************************************************
+-   .global SetProcessId
+-SetProcessId:
++   .global MMU_SetProcessId
++MMU_SetProcessId:
+    mcr p15,0,r0,c13,c0,0
+    mov pc ,lr
+ 
+diff -u -r acoral_full/pal/mk/pb11mpcore/hal_thread_s.S acoral/pal/mk/pb11mpcore/hal_thread_s.S
+--- acoral_full/pal/mk/pb11mpcore/hal_thread_s.S	2010-08-30 16:06:27.000000000 +0800
++++ acoral/pal/mk/pb11mpcore/hal_thread_s.S	2012-11-14 15:37:38.000000000 +0800
+@@ -19,6 +19,9 @@
+     ldr  r2,=IRQ_stack
+ #ifdef CFG_CMP              @cmp支持
+     bl  HAL_GET_CURRENT_CPU
++    /////////////////
++    sub r0,r0,#1
++    /////////////////
+     cmp r0,#0
+     sub r0,r0,#1
+     ldrne r2,=irq_stack
+@@ -50,6 +53,9 @@
+ #ifdef CFG_CMP
+     mov r3,r0
+     bl  HAL_GET_CURRENT_CPU
++    /////////////////
++    sub r0,r0,#1
++    /////////////////
+     cmp r0,#0
+     sub r0,r0,#1
+     ldrne r2,=irq_stack
+diff -u -r acoral_full/pal/mk/pb11mpcore/start.S acoral/pal/mk/pb11mpcore/start.S
+--- acoral_full/pal/mk/pb11mpcore/start.S	2010-08-30 16:06:27.000000000 +0800
++++ acoral/pal/mk/pb11mpcore/start.S	2012-11-16 11:30:30.000000000 +0800
+@@ -1,4 +1,5 @@
+ #include "hal_brd_cfg.h"
++
+ .global  __ENTRY
+ .global  ResetHandler
+ __ENTRY:
+@@ -23,9 +24,16 @@
+         @ Handle secondary mpcores
+         @
+         MRC     p15, 0, r0, c0, c0, 5
+-        ANDS    r0, r0, #0x0f
+-        BEQ     clear_leds                      @ Go if core 0 on primary core tile
+-        BL      __secondary_mpcore              @ Will not return
++        AND    r0, r0, #0x0f
++
++	
++        cmp	  r0, #1					//main CPU0
++      
++        BNE	  __secondary_mpcore 
++
++        @@@@@@@@@@@@@@@
++       @ BL	uart_set
++        @@@@@@@@@@@@@@@
+         
+         @
+         @ Clear the LED s
+@@ -38,7 +46,8 @@
+         @
+         @ Initialise memory
+         @
+-        BL      __platform_memory_init
++        
++        @BL      __platform_memory_init
+ 
+         @
+         @ Are we running from our load address
+@@ -71,7 +80,7 @@
+         @
+         @ Initiallise static memory controller
+         @
+-        BL      __platform_static_memory_init
++        @BL      __platform_static_memory_init
+ 
+         @
+         @ Create a small temporary stack, use the first 4K of memory
+@@ -84,6 +93,7 @@
+         @ Basic initialization of the UART, this is so we have something
+         @ to output any error message during boot.
+         @
++uart_set:        
+         LDR      r1, =UART0_BASE
+         MOV      r0, #0                     @ Disable UART
+         STR      r0, [r1,#UART_PL011_CR]
+@@ -96,21 +106,64 @@
+         LDR      r0, =0x301                 @ Enable UART
+         STR      r0, [r1,#UART_PL011_CR]
+ 
++  @@@@@@@@@@@@@@@@@@@@@   
++
++
++	@@@########@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #65
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++
++/*
++ zero_set:
++	LDR      r1, =UART0_BASE	
++	@LDR      r1, =0
++        MOV     r2, #0
++        MOV	    r0, #13
++        STR	    r0, [r1,#UART_PL01x_DR]
++        MOV     r0, #10
++        STR	    r0, [r1,#UART_PL01x_DR]
++loop_print:
++        MOV	    r0, #68
++        STR	    r0, [r1,#UART_PL01x_DR]
++        ADD     r2, #1
++        CMP     r2, #80
++        BEQ	    zero_set
++        bl 	    loop_print
++*/
++ @@@@@@@@@@@@@@@@@@@@@@@@
++
+ copy_vectors:
+         LDR     r0, =HAL_VECTR_START
+-        CMP     r0, #0
++	LDR     r2, =0x0
++	@LDR     r2, =0x01000000
++        CMP     r0, r2
+         BEQ     real_code
+         LDR     r1, =HAL_VECTR_END
+-        MOV     r2, #0
++        @MOV     r2, #0
+ 1:    
+         LDR     r3, [r0], #4
+         STR     r3, [r2], #4
+         CMP     r0, r1
+         BLO     1b
+ 
++	@@@########@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #66
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++	
+ real_code:
+ 
+ 	bl InitStacks
++
++	@@@###C####@@@@@
++	LDR 	 r1, =UART0_BASE	
++	MOV r0, #67
++	STR 	r0, [r1,#UART_PL01x_DR]
++	@@@########@@@@@
++	
+ 	ldr  r0,=bss_start
+ 	ldr  r1,=bss_end
+ 	bl    mem_clear
+@@ -122,393 +175,21 @@
+ 
+ 	ldr     sp,=SYS_stack
+ 
++	@@@####D###@@@@@
++	LDR 	 r1, =UART0_BASE	
++	MOV r0, #68
++	STR 	r0, [r1,#UART_PL01x_DR]
++	@@@########@@@@@
+ 
+         bl acoral_start
+ @
+ @ ------------------------------------------------------------
+ @
+ 
+-__platform_memory_init:
+-
+-        MOV     r13, lr
+-
+-        BL      __platform_dmc_init
+-
+-        MOV     lr, r13
+-
+-        @
+-        @ Have we already remapped, if so do not do it again
+-        @
+-        LDR     r8, =SC_BASE
+-        LDR     r6, [r8, #SC_CTRL]
+-        LDR     r0, =SC_REMAP_STAT
+-        TST     r6, r0
+-        BEQ     end
+-
+-        @
+-        @ If we are running from the first 64M of memory this
+-        @ is going to disable when we remap, therfore we need
+-        @ to jump to the real copy of this code in flash.
+-        @
+-        ADR     r1, update             @ Get relative address
+-        CMP     r1, #(64 << 20)     @ Is this in the first 64M
+-        BCS     wait                 @ No, skip
+-
+-        @
+-        @ Check boot select switches
+-        @
+-        LDR     r5, =BRD_BASE
+-        LDR     r6, [r5, #BRD_BOOTCS]
+-        AND     r6, r6, #0x1
+-
+-        @
+-        @ Move execution to the remapped area.
+-        @ This will either be NOR flash or Expansion Flash.
+-        @
+-        MOV     r0, #0
+-        CMP     r6, #0x0
+-        MOVEQ   r0, #NOR_FLASH     @ NOR Flash
+-        CMP     r6, #0x1
+-        MOVEQ   r0, #EXP_FLASH     @ Expansion Flash
+-        ADD     pc, r0, r1
+-
+-update:
+-	ADD     lr, r0, lr          @ Must update our return address
+-
+-        @ Wait for slave cores to go into wfi
+-wait:
+-        LDR     r5, =BRD_BASE
+-        LDR     r6, [r5, #BRD_PLD_CTRL2]
+-        AND     r6, r6, #0xe000
+-        CMP     r6, #0xe000
+-        BNE     wait
+-        
+-        @ Set the REMAP bit
+-        LDR     r6, [r8, #SC_CTRL]
+-        ORR     r6, r6, #SC_REMAP
+-        STR     r6, [r8, #SC_CTRL]
+-
+-end:
+-	mov pc,lr	
+-
+-@ ------------------------------------------------------------
+-@
+-@ Config static memory on the SSMC with basic settings
+-@
+-@ ------------------------------------------------------------
+-
+-__platform_static_memory_init:
+-	LDR     r0, =SSMC_BASE        
+-
+-        @  Set delays for CS3
+-        LDR     r1, =0x0003E377
+-        STR     r1, [r0, #SMC_SET_CYCLES]
+-        
+-        @ set opmode bit
+-        LDR     r1, =0x00002002
+-        STR     r1, [r0, #SMC_SET_OPMODE]
+-        
+-        @ select CS3 for Ethernet
+-        LDR     r1, =0x01C00000
+-        STR     r1, [r0, #SMC_DIRECT_CMD]                
+-
+-        @  Set delays for CS2 SRAM
+-        LDR     r1, =0x00031944
+-        STR     r1, [r0, #SMC_SET_CYCLES]
+-        
+-        @ set opmode bit
+-        LDR     r1, =0x00000aaa
+-        STR     r1, [r0, #SMC_SET_OPMODE]
+-        
+-        @ select CS2 for SRAM
+-        LDR     r1, =0x01400000
+-        STR     r1, [r0, #SMC_DIRECT_CMD]                
+-
+-        @  Set delays for CS1 & CS0 NOR FLASH
+-        LDR     r1, =0x00036155
+-        STR     r1, [r0, #SMC_SET_CYCLES]
+-        
+-        @ set opmode bit
+-        LDR     r1, =0x00000aaa
+-        STR     r1, [r0, #SMC_SET_OPMODE]
+-        
+-        @ select CS1 
+-        LDR     r1, =0x00C00000
+-        STR     r1, [r0, #SMC_DIRECT_CMD]                
+-
+-        @ select CS0 
+-        LDR     r1, =0x00400000
+-        STR     r1, [r0, #SMC_DIRECT_CMD]     
+-
+-	MOV PC,LR	
+-
+-@ ------------------------------------------------------------
+-@
+-@ Initializes dynamic memory controller
+-@
+-@ ------------------------------------------------------------
+-
+ 
+-__platform_dmc_init:
+ 
+-      	LDR     r0, =DMC_BASE
+-    
+-@/* set DLL THRU mode*/
+-        ADD     r2,r0,#DMC_PLL
+-        MOV     r1, #0x1
+-        STR     r1, [r2, #0]
+-        
+-@/* set config mode*/
+-        MOV     r1, #0x4
+-        STR     r1, [r0, #DMC_COMMAND]
+-    
+-@/*        MOV     r1, #0x3*/
+-@/*        STR     r1, [r0, #DMC_ID_0_CFG]*/
+-
+-@/* initialise memory controlller*/
+-
+-@/* refresh period*/
+-        LDR     r1, =0x185
+-        STR     r1, [r0, #DMC_REFRESH_PRD]
+-
+-@/* cas latency*/
+-        MOV     r1, #0x5
+-        STR     r1, [r0, #DMC_CAS_LATENCY]
+-
+-@/* t_dqss*/
+-        MOV     r1, #0x1
+-        STR     r1, [r0, #DMC_T_DQSS]
+-
+-@/* t_mrd*/
+-        MOV     r1, #0x3
+-        STR     r1, [r0, #DMC_T_MRD]
+-
+-@/* t_ras*/
+-        MOV     r1, #0x5
+-        STR     r1, [r0, #DMC_T_RAS]
+-
+-@/* t_rc*/
+-        MOV     r1, #0x8
+-        STR     r1, [r0, #DMC_T_RC]
+-
+-@/* t_rcd*/
+-        MOV     r1, #0x3
+-        STR     r1, [r0,#DMC_T_RCD]
+-
+-@/* t_rfc*/
+-        MOV     r1, #0xA8
+-        STR     r1, [r0, #DMC_T_RFC]
+-    
+-@/* t_rp*/
+-        MOV     r1, #0x3
+-        STR     r1, [r0, #DMC_T_RP]
+-
+-@/* t_rrd*/
+-        MOV     r1, #0x2
+-        STR     r1, [r0, #DMC_T_RRD]
+-
+-@/* t_wr*/
+-        MOV     r1, #0x2
+-        STR     r1, [r0, #DMC_T_WR]
+-
+-@/* t_wtr*/
+-        MOV     r1, #0x1
+-        STR     r1, [r0, #DMC_T_WTR]
+-
+-@/* t_xp*/
+-        MOV     r1, #0x4
+-        STR     r1, [r0, #DMC_T_XP]
+-
+-@/* t_xsr*/
+-        MOV     r1, #0xC8
+-        STR     r1, [r0, #DMC_T_XSR]
+-
+-@/* t_esr*/
+-        MOV     r1, #0x18
+-        STR     r1, [r0, #DMC_T_ESR]
+-
+-@/* set memory config*/
+-        LDR     r1, =0x00219F93
+-        STR     r1, [r0, #DMC_MEMORY_CONFIG]
+-
+-@/* initialise external memory chip 0 & 1*/
+-
+-@/* set chip select for chip 0*/
+-        LDR     r1, =0x000070F0
+-        STR     r1, [r0, #DMC_CHIP_0_CFG]
+-@/* set chip select for chip 1*/
+-        LDR     r1, =0x000080F0
+-        STR     r1, [r0, #DMC_CHIP_1_CFG]
+ 
+-@/* delay*/
+-        MOV     r1, #0
+-1:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #100
+-        BLT      1b      
+-        
+-@/* send nop [6]*/
+-        LDR     r1, =0x000C0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        STR     r1, [r0, #DMC_DIRECT_CMD]        
+-        LDR     r1, =0x001C0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        STR     r1, [r0, #DMC_DIRECT_CMD]  
+-
+-@/* pre-charge all [7]*/
+-        MOV     r1, #0x0
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        MOV     r1, #0x00100000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]        
+-
+-@/* wait tRP & nop [8]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]     
+-        
+-@/* delay*/
+-        MOV     r1, #0             
+-2:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT     2b               
+-
+-@/* set extended mode register [9]*/
+-        LDR     r1, =0x00090000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        LDR     r1, =0x00190000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-
+-@/* wait tMRD & nop [10]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]  
+-
+-@/* delay*/
+-        MOV     r1, #0               
+-3:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT      3b         
+-
+-@/* set mode register [11]*/
+-        LDR     r1, =0x00080163
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        LDR     r1, =0x00180163
+-        STR     r1, [r0, #DMC_DIRECT_CMD]    
+-        
+-@/* delay*/
+-        MOV     r1, #0
+-4:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #100
+-        BLT     4b
+-        
+-@/* wait tMRD & nop [12]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]         
+-
+-@/* delay*/
+-        MOV     r1, #0        
+-5:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT     5b          
+-
+-@/* pre-charge all [13]*/
+-        MOV     r1, #0x0
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        MOV     r1, #0x100000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]        
+-        
+-@/* wait tRP & nop [14]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]           
+-        
+-@/* delay*/
+-        MOV     r1, #0        
+-6:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT     6b        
+-
+-@/* auto-refresh [15]*/
+-        MOV     r1, #0x00040000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        MOV     r1, #0x00140000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        
+-@/* wait tRFC & nop [16]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-
+-@/* delay*/
+-        MOV     r1, #0                
+-7:       LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT     7b       
+-
+-@/* auto-refresh [17]*/
+-        MOV     r1, #0x040000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        MOV     r1, #0x140000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]        
+-        
+-@/* wait tRFC & nop [18]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD] 
+-
+-@/* delay*/
+-        MOV     r1, #0                
+-8:   
+-        ldr  r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT     8b         
+-
+-@/* set mode register [19]*/
+-        LDR     r1, =0x00080063
+-        STR     r1, [r0, #DMC_DIRECT_CMD]
+-        LDR     r1, =0x00180063
+-        STR     r1, [r0, #DMC_DIRECT_CMD]        
+-        
+-@/* wait tMRD & nop [20]*/
+-        MOV     r1, #0x0c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]   
+-        MOV     r1, #0x1c0000
+-        STR     r1, [r0, #DMC_DIRECT_CMD]    
+-        
+-@/* delay*/
+ 
+-        MOV     r1, #0             
+-9: 
+-      LDR     r3, [r0, #DMC_STATUS]    @/* read status register*/
+-        ADD     r1, r1, #1
+-        CMP     r1, #10
+-        BLT     9b 
+-    
+-
+-@/*----------------------------------------    */
+-@/* go command*/
+-        MOV     r1, #0x0
+-        STR     r1, [r0, #DMC_COMMAND]
+-
+-@/* wait for ready*/
+-10:      LDR     r1, [r0,#DMC_STATUS]
+-        TST     r1,#1
+-        BEQ     10b 
+-        mov  pc,     lr
+ 
+ @***************************************************************
+ @                       堆栈初始化
+@@ -522,22 +203,55 @@
+ 	msr	cpsr_cxsf,r1		@UndefMode
+ 	ldr	sp,=UDF_stack		@ UndefStack=0x33FF_5C00
+ 
++	
++	@@@####C####@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #67
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++	
+ 	orr	r1,r0,#MODE_ABORT|NOINT
+ 	msr	cpsr_cxsf,r1		@AbortMode
+ 	ldr	sp,=ABT_stack		@ AbortStack=0x33FF_6000
+ 
++	@@@####D####@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #68
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++	
+ 	orr	r1,r0,#MODE_IRQ|NOINT
+ 	msr	cpsr_cxsf,r1		@IRQMode
+ 	ldr	sp,=IRQ_stack		@ IRQStack=0x33FF_7000
+ 
++	@@@####E####@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #69
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++	
+ 	orr	r1,r0,#MODE_FIQ|NOINT
+ 	msr	cpsr_cxsf,r1		@FIQMode
+ 	ldr	sp,=FIQ_stack		@ FIQStack=0x33FF_8000
+ 
+-	bic	r0,r0,#MODE_MASK|NOINT
+-	orr	r1,r0,#MODE_SYSTEM
++	@@@####F####@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #70
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++
++	@bic	r0,r0,#MODE_MASK|NOINT
++	@orr	r1,r0,#MODE_SYSTEM
++	orr	r1,r0,#MODE_SYSTEM|NOINT
+ 	msr	cpsr_cxsf,r1		@SVCMode
+ 	ldr	sp,=SVC_stack		@ SVCStack=0x33FF_5800
++
++	@@@####G####@@@@@
++	LDR 	 r8, =UART0_BASE	
++	MOV r9, #71
++	STR 	r9, [r8,#UART_PL01x_DR]
++	@@@########@@@@@
++	
+ 	mov	pc,r2
+ 
+ @***************************************************************
+@@ -554,6 +268,9 @@
+ 	MOV PC,LR
+ 
+ __secondary_mpcore:
++
++	//b .             //stop here
++	
+ 	LDR     r8, =SC_BASE
+         LDR     r6, [r8, #SC_CTRL]
+         LDR     r0, =SC_REMAP_STAT
+@@ -597,6 +314,11 @@
+         MOV     r6, #0xF0
+         STR     r6, [r5, #PRIORITY_MASK_REGISTER]
+ 
++	//clear    if 
++	LDR     r5, =0x08000004
++	LDR     r6, =0x0
++        STR     r6, [r5, #0]
++        
+         @ Read core number into r0, required by application program
+         @ on exit from wait for interrupt loop
+         MRC     p15, 0, r0, c0, c0, 5
+@@ -607,8 +329,24 @@
+         MCR     p15, 0, r2, c7, c0, 4 
+         
+         @ Read flag register to see if address to jump too
+-        LDR     r5, =BRD_BASE
+-        LDR     r6, [r5, #BRD_FLAGS]
++
++	MRC     p15, 0, r0, c0, c0, 5
++        AND    r0, r0, #0x0f
++
++	cmp     r0, #2
++	beq      JMP_NEXT
++	//MCR     p15, 0, r2, c7, c0, 4
++JMP_TOP:
++	LDR     r5, =0x08000004
++        LDR     r6, [r5, #0]
++        CMP     r6, #0
++	BEQ     JMP_TOP
++	
++	
++JMP_NEXT:	
++
++        LDR     r5, =0x08000000
++        LDR     r6, [r5, #0]
+         CMP     r6, #0
+         BXNE    r6
+         B       4b
+diff -u -r acoral_full/user/src/shell.c acoral/user/src/shell.c
+--- acoral_full/user/src/shell.c	2010-08-30 16:06:28.000000000 +0800
++++ acoral/user/src/shell.c	2012-11-26 17:24:46.000000000 +0800
+@@ -188,17 +188,18 @@
+ 
+ void acoral_shell_enter(void *args){
+ 	acoral_char *cmd_buf;
++	acoral_u32  num = 2;
+ 	acoral_set_thread_console((acoral_id)args);
+ 	if(acoral_cur_thread->console_id<0){
+ 		acoral_prints("The thread have no Console\n");
+ 		return;
+ 	}
+ 	cmd_buf=acoral_malloc(sizeof(BUF_SIZE));
+-	while(1){
++	while(num--){
+ 		acoral_prints("\r\n");
+-		acoral_prints("Acoral:>");
+-		get_cmd(cmd_buf);
+-		if(cmd_buf[0])
+-			cmd_exe(cmd_buf);
++		acoral_prints("My_Acoral:>");
++		//get_cmd(cmd_buf);
++		//if(cmd_buf[0])
++			//cmd_exe(cmd_buf);
+ 	}
+ }
+diff -u -r acoral_full/user/src/user.c acoral/user/src/user.c
+--- acoral_full/user/src/user.c	2010-08-30 16:06:28.000000000 +0800
++++ acoral/user/src/user.c	2012-11-26 17:10:36.000000000 +0800
+@@ -5,6 +5,53 @@
+ 		acoral_delay_self(1000);
+ 	}
+ }
++
++
++void monitor_linux(void *args)
++{
++	//acoral_u32 app_addr = (*(volatile acoral_u32 *)(0x80000004));	
++	while(1){
++		 acoral_delay_self(1000);
++		acoral_print("%u\n", *(volatile acoral_u32 *)(0x80000000));
++		
++		if((*(volatile acoral_u32 *)(0x80000000)) & 0x1)
++		{
++			acoral_print("app start\n");
++			acoral_u32 app_addr = (*(volatile acoral_u32 *)(0x80000004));
++			acoral_print("app_addr is %d", app_addr);
++			acoral_create_thread(app_addr, 512,NULL,"app",21, 3);
++			break;
++		}
++		acoral_print("%u", *(volatile acoral_u32 *)(0x80000008));
++	}
++		
++}
++
++void test1(void *args)
++{
++	while(1){
++		 acoral_delay_self(1000);
++		 acoral_print("cpu1\n");
++		}
++}
++
++void test2(void *args)
++{
++	while(1){
++		 acoral_delay_self(2000);
++		 acoral_print("cpu2\n");
++		}
++}
++
++void test3(void *args)
++{
++	while(1){
++		 acoral_delay_self(3000);
++		 acoral_print("cpu3\n");
++		}
++}
++
++
+ void user_main()
+ {
+ #ifdef CFG_TELNET_SHELL
+@@ -13,4 +60,20 @@
+ #ifdef CFG_WEB_SERVER
+ 	user_httpd();
+ #endif
++	
++	//acoral_id id = acoral_create_thread(monitor_linux, 512,NULL,"monitor_linux",21, 3);
++	//acoral_create_thread(test1, 512,NULL,"test1",21, 0);
++	//acoral_create_thread(test2, 512,NULL,"test2",21, 1);
++	//acoral_create_thread(test3, 512,NULL,"test3",21, 2);
++
++	/*if(id == -1)
++	{
++		while(1){
++         		acoral_delay_self(1000);
++         		acoral_print("Delay test\n");
++   		 }
++	}
++	*/
++
+ }
++

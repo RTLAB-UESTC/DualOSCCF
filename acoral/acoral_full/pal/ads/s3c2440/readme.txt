@@ -1,0 +1,1 @@
+acoral.scf是ads调试的配置文件

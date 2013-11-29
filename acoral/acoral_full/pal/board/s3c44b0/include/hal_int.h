@@ -1,0 +1,43 @@
+#ifndef HAL_INTR_H
+#define HAL_INTR_H
+#define HAL_INTR_MIN            0
+#define IRQ_EINT0		HAL_INTR_MIN+25
+#define IRQ_EINT1		HAL_INTR_MIN+24
+#define IRQ_EINT2		HAL_INTR_MIN+23
+#define IRQ_EINT3		HAL_INTR_MIN+22
+#define IRQ_EINT4_7		HAL_INTR_MIN+21
+#define IRQ_TICK		HAL_INTR_MIN+20
+#define IRQ_ZDMA0		HAL_INTR_MIN+19
+#define IRQ_ZDMA1		HAL_INTR_MIN+18
+#define IRQ_BDMA0		HAL_INTR_MIN+17
+#define IRQ_BDMA1		HAL_INTR_MIN+16
+#define IRQ_WDT 		HAL_INTR_MIN+15   
+#define IRQ_UERR0_1		HAL_INTR_MIN+14
+#define IRQ_TIMER0	 	HAL_INTR_MIN+13
+#define IRQ_TIMER1	 	HAL_INTR_MIN+12
+#define IRQ_TIMER2		HAL_INTR_MIN+11
+#define IRQ_TIMER3		HAL_INTR_MIN+10
+#define IRQ_TIMER4		HAL_INTR_MIN+9
+#define IRQ_TIMER5		HAL_INTR_MIN+8
+#define IRQ_URXD0		HAL_INTR_MIN+7
+#define IRQ_URXD1		HAL_INTR_MIN+6
+#define IRQ_IIC 		HAL_INTR_MIN+5
+#define IRQ_SIO 		HAL_INTR_MIN+4
+#define IRQ_UTXD0		HAL_INTR_MIN+3
+#define IRQ_UTXD1		HAL_INTR_MIN+2
+#define IRQ_RTC 		HAL_INTR_MIN+1
+#define IRQ_ADC	        	HAL_INTR_MIN+0
+
+#define HAL_INTR_NUM 26
+#define HAL_INTR_MAX HAL_INTR_MIN+HAL_INTR_NUM-1
+
+#ifndef HAL_TRANSLATE_VECTOR
+#define HAL_TRANSLATE_VECTOR(_vector_,_index_) \
+	(_index_)=(_vector_);
+#endif
+
+#define HAL_INTR_INIT()	hal_intr_init()
+#define HAL_INTR_SET_ENTRY(isr) hal_intr_set_entry(isr)
+
+#endif
+

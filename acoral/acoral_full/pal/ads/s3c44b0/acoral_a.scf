@@ -1,0 +1,63 @@
+;/****************************************Copyright (c)**************************************************
+;**                               Guangzou ZLG-MCU Development Co.,LTD.
+;**                                      graduate school
+;**                                 http://www.zlgmcu.com
+;**
+;**--------------File Info-------------------------------------------------------------------------------
+;** File Name: men_b.scf
+;** Last modified Date:  2004-09-17
+;** Last Version: 1.0
+;** Descriptions: Scatter File
+;**
+;**------------------------------------------------------------------------------------------------------
+;** Created By: Chenmingji
+;** Created date:   2004-09-17
+;** Version: 1.0
+;** Descriptions: First version
+;**
+;**------------------------------------------------------------------------------------------------------
+;** Modified by:
+;** Modified date:
+;** Version:
+;** Descriptions:
+;**
+;********************************************************************************************************/
+LOAD 0x0c080000
+{
+    CODE 0x0c080000
+    {
+     	start.o (vectors, +First)
+        * (+RO)
+       
+    }
+    
+    DATA +0
+    {
+     	* (+RW)
+    }
+    
+    BSS +0
+    {
+    	start.o (Bss_Start)
+    	* (+ZI)
+    	start.o (Bss_End)
+    }
+    
+ 	STACK	+0
+    {  
+    	start.o (MyStacks)
+    }
+    
+    HEAP_START +0 UNINIT
+    {
+        start.o (HeapStart)
+    }
+
+    HEAP_END 0xc7ff9fc UNINIT
+    {
+        start.o (HeapEnd)
+    }
+    
+  
+    
+}

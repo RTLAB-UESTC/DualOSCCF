@@ -1,0 +1,47 @@
+LOAD 0x30000000
+{
+    CODE 0x30000000
+    {
+     	start.o (vectors, +First)
+        * (+Ro)
+       
+    }
+    
+    DATA +0
+    {
+     	* (+RW)
+    }
+    
+    BSS +0
+    {
+    	start.o (Bss_Start,+First)
+    	* (+ZI)
+    	start.o (Bss_End)
+    }
+    
+ 	STACK	+0
+    {  
+    	start.o (MyStacks)
+    }
+    
+    HEAP_START +0 UNINIT
+    {
+        start.o (HeapStart)
+    }
+
+    HEAP_END 0x33effff8 UNINIT
+    {
+        start.o (HeapEnd)
+    }
+    MMU_BLOCK  0x33f00000   UNINIT
+    {
+    	start.o (MMU)
+    }
+  
+    
+}
+
+
+
+
+

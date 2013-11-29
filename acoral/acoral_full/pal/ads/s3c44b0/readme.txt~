@@ -1,0 +1,2 @@
+acoral_b.scf是烧写到flash的配置文件
+acoral_a.scf是调试的配置文件
